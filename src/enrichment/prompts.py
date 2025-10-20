@@ -10,11 +10,13 @@ RESPONSE_SCHEMA: Dict[str, Any] = {
     "properties": {
         "tldr": {
             "type": "string",
-            "description": "≤12 words, crisp summary, no punctuation at end",
+            "description": "≤12 words; what it is + why it matters; plain language; no trailing punctuation",
+            "maxLength": 120,
+            "pattern": r"^(?!.*[.!?]\s*$).{1,120}$",
         },
         "challenge": {
             "type": "string",
-            "description": "≤14 words; imperative, concrete action that demonstrates the skill; no trailing punctuation",
+            "description": "≤12 words; state the core obstacle + its context/constraint; plain language; no trailing punctuation",
             "maxLength": 120,
             "pattern": r"^(?!.*[.!?]\s*$).{1,120}$",
         },
@@ -30,11 +32,13 @@ BATCH_RESPONSE_SCHEMA: Dict[str, Any] = {
             "id": {"type": "string"},
             "tldr": {
                 "type": "string",
-                "description": "≤12 words, crisp summary, no punctuation at end",
+                "description": "≤12 words; what it is + why it matters; plain language; no trailing punctuation",
+                "maxLength": 120,
+                "pattern": r"^(?!.*[.!?]\s*$).{1,120}$",
             },
             "challenge": {
                 "type": "string",
-                "description": "≤14 words; imperative, concrete action that demonstrates the skill; no trailing punctuation",
+                "description": "≤12 words; state the core obstacle + its context/constraint; plain language; no trailing punctuation",
                 "maxLength": 120,
                 "pattern": r"^(?!.*[.!?]\s*$).{1,120}$",
             },
@@ -102,8 +106,8 @@ def build_batch_prompt(rows: List[Dict[str, str]]) -> str:
 Evaluate the following {len(topics)} topics in batch.
 
 For each topic, provide:
-1. TLDR (≤12 words, no ending punctuation)
-2. Challenge (≤14 words; imperative, concrete action that demonstrates the skill; no trailing punctuation)
+1. TLDR (≤12 words; what it is + why it matters; plain language; no trailing punctuation)
+2. Challenge (≤12 words; state the core obstacle + its context/constraint; plain language; no trailing punctuation)
 
 Topics to evaluate:
 {json.dumps(topics, indent=2)}
