@@ -302,7 +302,8 @@ class JSONRoadmapScraper:
                         row["Topic"],
                         row.get("Description", ""),
                     )
-                    cache.set(row_hash, enrichment["tldr"], enrichment["challenge"])
+                    # Disable gemini cache
+                    # cache.set(row_hash, enrichment["tldr"], enrichment["challenge"])
 
                 logger.info(f"✓ Batch {batch_num} enriched successfully")
 

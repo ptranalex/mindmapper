@@ -14,8 +14,9 @@ RESPONSE_SCHEMA: Dict[str, Any] = {
         },
         "challenge": {
             "type": "string",
-            "enum": ["practice", "expert"],
-            "description": "practice: fundamental skills, shallow breadth; expert: advanced/architecture, heavy prereqs",
+            "description": "≤14 words; imperative, concrete action that demonstrates the skill; no trailing punctuation",
+            "maxLength": 120,
+            "pattern": r"^(?!.*[.!?]\s*$).{1,120}$",
         },
     },
     "required": ["tldr", "challenge"],
@@ -33,8 +34,9 @@ BATCH_RESPONSE_SCHEMA: Dict[str, Any] = {
             },
             "challenge": {
                 "type": "string",
-                "enum": ["practice", "expert"],
-                "description": "practice: fundamental skills, shallow breadth; expert: advanced/architecture, heavy prereqs",
+                "description": "≤14 words; imperative, concrete action that demonstrates the skill; no trailing punctuation",
+                "maxLength": 120,
+                "pattern": r"^(?!.*[.!?]\s*$).{1,120}$",
             },
         },
         "required": ["id", "tldr", "challenge"],
@@ -101,9 +103,7 @@ Evaluate the following {len(topics)} topics in batch.
 
 For each topic, provide:
 1. TLDR (≤12 words, no ending punctuation)
-2. Challenge level:
-   - "practice": fundamental skills, shallow breadth, few prerequisites
-   - "expert": advanced/architecture/production, heavy prerequisites, deep trade-offs
+2. Challenge (≤14 words; imperative, concrete action that demonstrates the skill; no trailing punctuation)
 
 Topics to evaluate:
 {json.dumps(topics, indent=2)}
