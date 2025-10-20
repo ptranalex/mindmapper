@@ -1,4 +1,4 @@
-# Roadmap.sh Scraper
+# Roadmap.sh Exporter
 
 A Python CLI tool that extracts structured roadmap data from the roadmap.sh GitHub repository and exports it to CSV format.
 
