@@ -20,8 +20,13 @@ RESPONSE_SCHEMA: Dict[str, Any] = {
             "maxLength": 120,
             "pattern": r"^(?!.*[.!?]\s*$).{1,120}$",
         },
+        "how_to": {
+            "type": "string",
+            "description": "Multi-line formatted learning guide with Steps (3-7 items), optional Guardrails and Signals of Done",
+            "maxLength": 800,
+        },
     },
-    "required": ["tldr", "challenge"],
+    "required": ["tldr", "challenge", "how_to"],
 }
 
 BATCH_RESPONSE_SCHEMA: Dict[str, Any] = {
@@ -42,8 +47,13 @@ BATCH_RESPONSE_SCHEMA: Dict[str, Any] = {
                 "maxLength": 120,
                 "pattern": r"^(?!.*[.!?]\s*$).{1,120}$",
             },
+            "how_to": {
+                "type": "string",
+                "description": "Multi-line formatted learning guide with Steps (3-7 items), optional Guardrails and Signals of Done",
+                "maxLength": 800,
+            },
         },
-        "required": ["id", "tldr", "challenge"],
+        "required": ["id", "tldr", "challenge", "how_to"],
     },
 }
 
@@ -73,11 +83,26 @@ Context:
 
 Task:
 1. Generate a TLDR (≤12 words, no ending punctuation)
-2. Classify challenge level:
-   - "practice": fundamental skills, shallow breadth, few prerequisites
-   - "expert": advanced/architecture/production, heavy prerequisites, deep trade-offs
+2. Generate a Challenge (≤12 words, state the core obstacle + context)
+3. Generate a How-To (multi-line learning guide, format exactly as shown):
 
-Output JSON with "tldr" and "challenge" fields."""
+   Format:
+   Steps:
+   - [action step 1, ≤9 words, imperative, no punctuation]
+   - [action step 2, ≤9 words, imperative, no punctuation]
+   - [3-7 total steps]
+   Guardrails:
+   - [common pitfall to avoid]
+   Signals of Done:
+   - [how to know you've mastered it]
+   
+   Guidelines:
+   - Use PACE framework (Practice, Apply, Critique, Extend)
+   - Steps: 3-7 action items, imperative voice, ≤9 words each
+   - Guardrails: Common mistakes to avoid (optional, max 5)
+   - Signals of Done: Mastery indicators (optional, max 5)
+
+Output JSON with "tldr", "challenge", and "how_to" fields."""
 
 
 def build_batch_prompt(rows: List[Dict[str, str]]) -> str:
@@ -108,10 +133,15 @@ Evaluate the following {len(topics)} topics in batch.
 For each topic, provide:
 1. TLDR (≤12 words; what it is + why it matters; plain language; no trailing punctuation)
 2. Challenge (≤12 words; state the core obstacle + its context/constraint; plain language; no trailing punctuation)
+3. How-To (multi-line formatted string with  Steps (3-7), optional Guardrails/Signals)
+   - Format: "Steps:\\n- step1\\n- step2\\n..."
+   - Each step ≤9 words, imperative, no punctuation
+   - PACE framework: Practice, Apply, Critique, Extend
+   - Optional: Guardrails (pitfalls) and Signals of Done (mastery indicators)
 
 Topics to evaluate:
 {json.dumps(topics, indent=2)}
 
-Output a JSON array with "id", "tldr", and "challenge" for each topic."""
+Output a JSON array with "id", "tldr", "challenge", and "how_to" for each topic."""
 
     return prompt

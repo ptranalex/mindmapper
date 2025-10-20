@@ -36,6 +36,7 @@ class EnrichmentCache:
                 row_hash TEXT PRIMARY KEY,
                 tldr TEXT NOT NULL,
                 challenge TEXT NOT NULL,
+                how_to TEXT,
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
         """
@@ -61,18 +62,18 @@ class EnrichmentCache:
         content = f"{category}|{subcategory}|{topic}|{description}"
         return hashlib.md5(content.encode("utf-8")).hexdigest()
 
-    def get(self, row_hash: str) -> Optional[Tuple[str, str]]:
+    def get(self, row_hash: str) -> Optional[Tuple[str, str, str]]:
         """Get cached enrichment result.
 
         Args:
             row_hash: MD5 hash of the row
 
         Returns:
-            Tuple of (tldr, challenge) if cached, None otherwise
+            Tuple of (tldr, challenge, how_to) if cached, None otherwise
         """
         conn = sqlite3.connect(self.db_path)
         cursor = conn.execute(
-            "SELECT tldr, challenge FROM enrichment_cache WHERE row_hash = ?",
+            "SELECT tldr, challenge, how_to FROM enrichment_cache WHERE row_hash = ?",
             (row_hash,),
         )
         result = cursor.fetchone()
@@ -80,25 +81,26 @@ class EnrichmentCache:
 
         if result:
             logger.debug(f"Cache hit for hash {row_hash[:8]}...")
-            return (result[0], result[1])
+            return (result[0], result[1], result[2] or "")
 
         logger.debug(f"Cache miss for hash {row_hash[:8]}...")
         return None
 
-    def set(self, row_hash: str, tldr: str, challenge: str) -> None:
+    def set(self, row_hash: str, tldr: str, challenge: str, how_to: str) -> None:
         """Store enrichment result in cache.
 
         Args:
             row_hash: MD5 hash of the row
             tldr: Generated TLDR summary
-            challenge: Challenge level (practice or expert)
+            challenge: Challenge description
+            how_to: How-to learning guide
         """
         conn = sqlite3.connect(self.db_path)
         conn.execute(
             """INSERT OR REPLACE INTO enrichment_cache 
-               (row_hash, tldr, challenge, created_at) 
-               VALUES (?, ?, ?, ?)""",
-            (row_hash, tldr, challenge, datetime.now()),
+               (row_hash, tldr, challenge, how_to, created_at) 
+               VALUES (?, ?, ?, ?, ?)""",
+            (row_hash, tldr, challenge, how_to, datetime.now()),
         )
         conn.commit()
         conn.close()

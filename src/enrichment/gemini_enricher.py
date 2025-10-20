@@ -103,7 +103,7 @@ class GeminiEnricher:
     def enrich_row(
         self, category: str, subcategory: str, topic: str, description: str
     ) -> Dict[str, str]:
-        """Enrich a single row with TLDR and challenge level.
+        """Enrich a single row with TLDR, challenge, and how-to.
 
         Args:
             category: Category name
@@ -112,21 +112,21 @@ class GeminiEnricher:
             description: Description text
 
         Returns:
-            Dictionary with 'tldr' and 'challenge' keys
+            Dictionary with 'tldr', 'challenge', and 'how_to' keys
         """
         # Check cache first
         row_hash = self.cache.compute_hash(category, subcategory, topic, description)
         cached = self.cache.get(row_hash)
         if cached:
             logger.info(f"✓ Cache hit for '{topic}'")
-            return {"tldr": cached[0], "challenge": cached[1]}
+            return {"tldr": cached[0], "challenge": cached[1], "how_to": cached[2]}
 
         # Generate with Gemini
         logger.info(f"⚡ Generating enrichment for '{topic}'...")
         result = self._generate_with_retry(category, subcategory, topic, description)
 
         # Cache result
-        self.cache.set(row_hash, result["tldr"], result["challenge"])
+        self.cache.set(row_hash, result["tldr"], result["challenge"], result["how_to"])
 
         return result
 
@@ -152,7 +152,7 @@ class GeminiEnricher:
             description: Description text
 
         Returns:
-            Dictionary with 'tldr' and 'challenge' keys
+            Dictionary with 'tldr', 'challenge', and 'how_to' keys
 
         Raises:
             Exception: If API call fails
@@ -179,14 +179,12 @@ class GeminiEnricher:
             result: Dict[str, str] = json.loads(response.text)
 
             # Validate response
-            if "tldr" not in result or "challenge" not in result:
+            if (
+                "tldr" not in result
+                or "challenge" not in result
+                or "how_to" not in result
+            ):
                 raise ValueError(f"Invalid response structure: {result}")
-
-            if result["challenge"] not in ["practice", "expert"]:
-                logger.warning(
-                    f"Invalid challenge level '{result['challenge']}', defaulting to 'practice'"
-                )
-                result["challenge"] = "practice"
 
             return result
 
@@ -212,7 +210,7 @@ class GeminiEnricher:
             max_retries: Maximum number of retry attempts
 
         Returns:
-            Dictionary with 'tldr' and 'challenge' keys
+            Dictionary with 'tldr', 'challenge', and 'how_to' keys
 
         Raises:
             Exception: If all retries fail
@@ -279,7 +277,7 @@ class GeminiEnricher:
             rows: List of row dictionaries (max 20)
 
         Returns:
-            List of enrichment results with 'tldr' and 'challenge'
+            List of enrichment results with 'tldr', 'challenge', and 'how_to'
 
         Raises:
             ValueError: If batch size exceeds 20 rows
@@ -316,11 +314,14 @@ class GeminiEnricher:
         # Return in original order
         enrichments = []
         for i in range(len(rows)):
-            result = results_map.get(str(i), {"tldr": "", "challenge": "practice"})
+            result = results_map.get(
+                str(i), {"tldr": "", "challenge": "", "how_to": ""}
+            )
             enrichments.append(
                 {
                     "tldr": result.get("tldr", ""),
-                    "challenge": result.get("challenge", "practice"),
+                    "challenge": result.get("challenge", ""),
+                    "how_to": result.get("how_to", ""),
                 }
             )
 

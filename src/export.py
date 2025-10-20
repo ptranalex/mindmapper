@@ -16,10 +16,11 @@ class CSVExporter:
         "Category",
         "Subcategory",
         "Topic",
-        "Description",
-        "Resources",
         "TLDR",
+        "Description",
+        "How_To",
         "Challenge",
+        "Resources",
     ]
 
     def __init__(self, output_dir: str = "output") -> None:

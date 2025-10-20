@@ -29,6 +29,12 @@ Deep dive into how the scraper was built:
 - **[Hierarchy Detection](implementation/hierarchy-detection.md)** - Proximity-based and graph-based algorithms
 - **[Implementation Report](implementation/implementation-report.md)** - Complete implementation documentation
 - **[Implementation Summary](implementation/implementation-summary.md)** - High-level implementation overview
+- **[Batch Processing Complete](implementation/BATCH_PROCESSING_COMPLETE.md)** - Batch processing implementation summary
+- **[Batch Processing Details](implementation/batch-processing.md)** - Comprehensive batch processing guide
+- **[GenAI Enrichment](implementation/genai-enrichment.md)** - AI-powered CSV enrichment documentation
+- **[How-To Column](implementation/HOW_TO_COLUMN_IMPLEMENTATION.md)** - How-To column implementation guide
+- **[Changes Summary](implementation/CHANGES_SUMMARY.md)** - Detailed changes log
+- **[Testing Guide](implementation/TESTING_GUIDE.md)** - Comprehensive testing guide for batch processing and enrichment
 
 ### 🐍 Python 3.14 Support
 

@@ -2,14 +2,14 @@
 
 ## ✅ Status: Python 3.14 Ready!
 
-Your mindmapper roadmap scraper now runs on Python 3.14.0 with excellent performance!
+Your roadmap scraper now runs on Python 3.14.0 with excellent performance!
 
 ## Using Python 3.14
 
 ### Activate Environment
 
 ```bash
-cd /Users/alex/Sandbox/mindmapper
+cd roadmapsh-exporter
 source venv314/bin/activate
 ```
 
@@ -270,7 +270,7 @@ print(df.head())
 
 ```bash
 # Create a cron job or scheduled task
-0 0 * * * cd /Users/alex/Sandbox/mindmapper && source venv314/bin/activate && python -m src.cli scrape --roadmap engineering-manager
+0 0 * * * cd /path/to/roadmapsh-exporter && source venv314/bin/activate && python -m src.cli scrape --roadmap engineering-manager
 ```
 
 ### 4. Integrate with Other Tools

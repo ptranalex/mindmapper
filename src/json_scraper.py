@@ -259,6 +259,7 @@ class JSONRoadmapScraper:
             if cached:
                 row["TLDR"] = cached[0]
                 row["Challenge"] = cached[1]
+                row["How_To"] = cached[2]
             else:
                 uncached_rows.append(row)
 
@@ -294,6 +295,7 @@ class JSONRoadmapScraper:
                 for row, enrichment in zip(batch, enrichments):
                     row["TLDR"] = enrichment["tldr"]
                     row["Challenge"] = enrichment["challenge"]
+                    row["How_To"] = enrichment["how_to"]
 
                     # Cache individual result
                     row_hash = cache.compute_hash(
@@ -303,7 +305,12 @@ class JSONRoadmapScraper:
                         row.get("Description", ""),
                     )
                     # Disable gemini cache
-                    # cache.set(row_hash, enrichment["tldr"], enrichment["challenge"])
+                    # cache.set(
+                    #     row_hash,
+                    #     enrichment["tldr"],
+                    #     enrichment["challenge"],
+                    #     enrichment["how_to"],
+                    # )
 
                 logger.info(f"✓ Batch {batch_num} enriched successfully")
 
@@ -322,10 +329,12 @@ class JSONRoadmapScraper:
                         )
                         row["TLDR"] = enrichment["tldr"]
                         row["Challenge"] = enrichment["challenge"]
+                        row["How_To"] = enrichment["how_to"]
                     except Exception as e2:
                         logger.error(f"Failed to enrich '{row['Topic']}': {str(e2)}")
                         row["TLDR"] = ""
                         row["Challenge"] = ""
+                        row["How_To"] = ""
                         failed += 1
 
         # Summary
