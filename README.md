@@ -97,6 +97,8 @@ python -m src.cli scrape
   - See --list for all 65+ available roadmaps
 - `--output PATH` - Output CSV path (default: auto-generated with timestamp)
 - `-v, --verbose` - Enable verbose logging for debugging
+- `--enrich` - Enrich CSV with AI-generated summaries (TLDR, Challenge)
+- `--gemini-api-key TEXT` - Google Gemini API key (or set `GEMINI_API_KEY` env var)
 - `--help` - Show help message
 
 ### Examples
@@ -120,17 +122,61 @@ python -m src.cli scrape --roadmap engineering-manager --output ~/Downloads/em_r
 
 # Verbose mode to see detailed progress
 python -m src.cli scrape --roadmap devops -v
+
+# Enrich with AI-generated summaries (requires Gemini API key)
+export GEMINI_API_KEY="your-api-key-here"
+python -m src.cli scrape --roadmap frontend --enrich
+
+# Or pass API key directly
+python -m src.cli scrape --roadmap backend --enrich --gemini-api-key "your-key"
+```
+
+### AI Enrichment (NEW!)
+
+The `--enrich` flag adds two AI-generated columns using Google Gemini API:
+
+- **TLDR**: ≤12 words crisp summary of each topic
+- **Challenge**: Classification as "practice" (fundamental skills) or "expert" (advanced/architecture)
+
+**Features:**
+
+- ✅ **Smart caching** - Results cached per row hash, re-runs are instant
+- ✅ **Cost-effective** - ~$0.007 for 150 rows (~1 cent!)
+- ✅ **Rate limiting** - Automatic backoff and retry on API limits
+- ✅ **Resilient** - Continues on single row failures, reports at end
+
+**Setup:**
+
+1. Get a free Gemini API key from [Google AI Studio](https://aistudio.google.com/)
+2. Set as environment variable: `export GEMINI_API_KEY="your-key"`
+3. Add `--enrich` flag to any scrape command
+
+**Example:**
+
+```bash
+# First run: Generates enrichments (~30 seconds for 150 rows)
+python -m src.cli scrape --roadmap engineering-manager --enrich
+
+# Second run: Instant (uses cache)
+python -m src.cli scrape --roadmap engineering-manager --enrich
 ```
 
 ## Output Format
 
 The tool generates a CSV file with the following columns:
 
+**Basic Columns:**
+
 - **Category** - Top-level roadmap category (auto-detected from roadmap structure)
-- **Subcategory** - Mid-level grouping (reserved for future use)
+- **Subcategory** - Mid-level grouping (auto-detected when available)
 - **Topic** - Individual learning topic
 - **Description** - Topic description from the roadmap
 - **Resources** - Pipe-separated list of resource URLs
+
+**AI-Enhanced Columns (with `--enrich` flag):**
+
+- **TLDR** - AI-generated crisp summary (≤12 words)
+- **Challenge** - Difficulty classification: "practice" or "expert"
 
 ### Hierarchy Detection
 
@@ -142,11 +188,22 @@ The tool now **automatically detects categories** using spatial analysis:
 
 Example output with detected categories:
 
+**Without enrichment:**
+
 ```csv
 Category,Subcategory,Topic,Description,Resources
 "Technical Strategy","","Architectural Decision-Making","Architectural decision-making is a crucial...","https://example.com/resource1"
 "Quality and Process","","CI/CD Implementation","CI/CD implementation involves...","https://example.com/resource2"
 "Team Development","","Hiring and Recruitment","Hiring and recruitment is vital...","https://example.com/resource3"
+```
+
+**With enrichment (`--enrich`):**
+
+```csv
+Category,Subcategory,Topic,Description,Resources,TLDR,Challenge
+"Technical Strategy","","Architectural Decision-Making","Architectural decision-making is a crucial...","https://example.com/resource1","Balance technical needs with business goals","expert"
+"Quality and Process","","CI/CD Implementation","CI/CD implementation involves...","https://example.com/resource2","Automate build test deploy pipeline efficiently","practice"
+"Team Development","","Hiring and Recruitment","Hiring and recruitment is vital...","https://example.com/resource3","Attract and select top engineering talent","practice"
 ```
 
 ## How It Works
