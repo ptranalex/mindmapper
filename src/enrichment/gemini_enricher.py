@@ -4,14 +4,19 @@ import json
 import logging
 import random
 import time
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 
 from google import genai  # type: ignore
 from google.genai import types, errors  # type: ignore
 import requests  # type: ignore
 
 from .cache import EnrichmentCache
-from .prompts import build_prompt, RESPONSE_SCHEMA
+from .prompts import (
+    build_prompt,
+    build_batch_prompt,
+    RESPONSE_SCHEMA,
+    BATCH_RESPONSE_SCHEMA,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -266,3 +271,57 @@ class GeminiEnricher:
                     raise
 
         raise Exception(f"Failed to generate enrichment after {max_retries} retries")
+
+    def enrich_batch(self, rows: List[Dict[str, str]]) -> List[Dict[str, str]]:
+        """Enrich a batch of rows.
+
+        Args:
+            rows: List of row dictionaries (max 20)
+
+        Returns:
+            List of enrichment results with 'tldr' and 'challenge'
+
+        Raises:
+            ValueError: If batch size exceeds 20 rows
+        """
+        if len(rows) > 20:
+            raise ValueError("Batch size must be ≤20 rows")
+
+        # Build batch prompt
+        prompt = build_batch_prompt(rows)
+
+        # Call Gemini with batch response schema
+        response = self.client.models.generate_content(
+            model=self.model,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=BATCH_RESPONSE_SCHEMA,
+                temperature=self.temperature,
+            ),
+        )
+
+        # Parse batch response
+        results: List[Dict[str, str]] = json.loads(response.text)
+
+        # Validate response
+        if len(results) != len(rows):
+            logger.warning(
+                f"Batch response length mismatch: expected {len(rows)}, got {len(results)}"
+            )
+
+        # Map results by ID
+        results_map = {r["id"]: r for r in results}
+
+        # Return in original order
+        enrichments = []
+        for i in range(len(rows)):
+            result = results_map.get(str(i), {"tldr": "", "challenge": "practice"})
+            enrichments.append(
+                {
+                    "tldr": result.get("tldr", ""),
+                    "challenge": result.get("challenge", "practice"),
+                }
+            )
+
+        return enrichments

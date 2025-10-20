@@ -223,7 +223,7 @@ class JSONRoadmapScraper:
     def _enrich_data(
         self, data_rows: List[Dict[str, str]], gemini_api_key: str
     ) -> List[Dict[str, str]]:
-        """Enrich data rows with AI-generated TLDR and challenge level.
+        """Enrich data rows with AI-generated TLDR and challenge level (batch mode).
 
         Args:
             data_rows: List of data rows to enrich
@@ -238,58 +238,106 @@ class JSONRoadmapScraper:
 
         # Show cache stats
         cache_count, cache_latest = cache.stats()
-        if cache_count > 0:
-            logger.info(
-                f"Cache contains {cache_count} entries (latest: {cache_latest})"
+        logger.info(
+            f"Cache: {cache_count} entries"
+            + (f" (latest: {cache_latest})" if cache_count > 0 else "")
+        )
+
+        # Phase 1: Check cache for all rows
+        logger.info("Checking cache for all rows...")
+        uncached_rows = []
+
+        for row in data_rows:
+            row_hash = cache.compute_hash(
+                row.get("Category", ""),
+                row.get("Subcategory", ""),
+                row["Topic"],
+                row.get("Description", ""),
             )
-        else:
-            logger.info("Cache is empty")
+            cached = cache.get(row_hash)
 
-        enriched_rows = []
-        total = len(data_rows)
+            if cached:
+                row["TLDR"] = cached[0]
+                row["Challenge"] = cached[1]
+            else:
+                uncached_rows.append(row)
+
+        cache_hits = len(data_rows) - len(uncached_rows)
+        logger.info(f"Cache hits: {cache_hits}/{len(data_rows)}")
+        logger.info(f"Rows to enrich: {len(uncached_rows)}")
+
+        if len(uncached_rows) == 0:
+            logger.info("All rows cached! ✅")
+            return data_rows
+
+        # Phase 2: Batch process uncached rows
+        BATCH_SIZE = 20
+        batches = [
+            uncached_rows[i : i + BATCH_SIZE]
+            for i in range(0, len(uncached_rows), BATCH_SIZE)
+        ]
+
+        logger.info(f"Processing {len(batches)} batches (batch size: {BATCH_SIZE})")
+
         failed = 0
-
-        for i, row in enumerate(data_rows, 1):
-            topic = row["Topic"]
-            category = row.get("Category", "")
-            subcategory = row.get("Subcategory", "")
-            description = row.get("Description", "")
-
-            logger.info(f"\n[{i}/{total}] {topic}")
+        for batch_num, batch in enumerate(batches, 1):
+            logger.info(f"\nBatch {batch_num}/{len(batches)} ({len(batch)} rows)")
 
             try:
-                # Enrich the row
-                enrichment = enricher.enrich_row(
-                    category, subcategory, topic, description
-                )
+                # Apply rate limiting
+                enricher._throttle()
 
-                # Add enrichment to row
-                row["TLDR"] = enrichment["tldr"]
-                row["Challenge"] = enrichment["challenge"]
+                # Enrich batch
+                enrichments = enricher.enrich_batch(batch)
 
-                logger.info(f"  TLDR: {enrichment['tldr']}")
-                logger.info(f"  Challenge: {enrichment['challenge']}")
+                # Apply results and cache
+                for row, enrichment in zip(batch, enrichments):
+                    row["TLDR"] = enrichment["tldr"]
+                    row["Challenge"] = enrichment["challenge"]
+
+                    # Cache individual result
+                    row_hash = cache.compute_hash(
+                        row.get("Category", ""),
+                        row.get("Subcategory", ""),
+                        row["Topic"],
+                        row.get("Description", ""),
+                    )
+                    cache.set(row_hash, enrichment["tldr"], enrichment["challenge"])
+
+                logger.info(f"✓ Batch {batch_num} enriched successfully")
 
             except Exception as e:
-                logger.error(f"  ✗ Failed to enrich: {str(e)}")
-                # Add empty enrichment for failed rows
-                row["TLDR"] = ""
-                row["Challenge"] = ""
-                failed += 1
+                logger.error(f"✗ Batch {batch_num} failed: {str(e)}")
+                # Fall back to individual processing for this batch
+                logger.info("Falling back to individual processing...")
 
-            enriched_rows.append(row)
+                for row in batch:
+                    try:
+                        enrichment = enricher.enrich_row(
+                            row.get("Category", ""),
+                            row.get("Subcategory", ""),
+                            row["Topic"],
+                            row.get("Description", ""),
+                        )
+                        row["TLDR"] = enrichment["tldr"]
+                        row["Challenge"] = enrichment["challenge"]
+                    except Exception as e2:
+                        logger.error(f"Failed to enrich '{row['Topic']}': {str(e2)}")
+                        row["TLDR"] = ""
+                        row["Challenge"] = ""
+                        failed += 1
 
         # Summary
         logger.info("\n" + "=" * 60)
         logger.info("ENRICHMENT SUMMARY")
         logger.info("=" * 60)
-        logger.info(f"Total rows: {total}")
-        logger.info(f"Successfully enriched: {total - failed}")
+        logger.info(f"Total rows: {len(data_rows)}")
+        logger.info(f"Cache hits: {cache_hits}")
+        logger.info(f"Newly enriched: {len(uncached_rows) - failed}")
         logger.info(f"Failed: {failed}")
-        if failed > 0:
-            logger.warning(f"Success rate: {(total - failed)/total*100:.1f}%")
-        else:
-            logger.info("Success rate: 100%")
+        logger.info(
+            f"Success rate: {(len(data_rows) - failed)/len(data_rows)*100:.1f}%"
+        )
         logger.info("=" * 60)
 
-        return enriched_rows
+        return data_rows
